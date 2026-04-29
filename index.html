@@ -1,1 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资源检索站</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+* {
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Microsoft Yahei",sans-serif;
+}
+body {
+    background:#12121f;
+    color:#eee;
+    padding:15px;
+}
+.search-wrap {
+    display:flex;
+    margin-bottom:20px;
+}
+#kw {
+    flex:1;
+    padding:12px 20px;
+    border:none;
+    border-radius:25px 0 0 25px;
+    font-size:16px;
+    background:#252538;
+    color:#fff;
+    outline:none;
+}
+#searchBtn {
+    padding:12px 25px;
+    border:none;
+    background:#0066ff;
+    color:#fff;
+    border-radius:0 25px 25px 0;
+    cursor:pointer;
+    font-size:16px;
+}
+.tip-text {
+    color:#999;
+    font-size:14px;
+    margin-bottom:15px;
+}
+.item-card {
+    background:#1e1e35;
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:12px;
+}
+.item-title {
+    font-size:16px;
+    margin-bottom:12px;
+    line-height:1.6;
+}
+.link-row {
+    margin:6px 0;
+    font-size:15px;
+}
+.link-row a {
+    color:#409eff;
+    text-decoration:none;
+}
+.btn-group {
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:15px;
+}
+.btn-copy,.btn-feed {
+    padding:5px 14px;
+    border-radius:20px;
+    border:none;
+    font-size:14px;
+    cursor:pointer;
+}
+.btn-copy {
+    background:#0066ff;
+    color:#fff;
+}
+.btn-feed {
+    background:#ff7700;
+    color:#fff;
+}
+.empty-box {
+    color:#ff5555;
+    line-height:2;
+    font-size:15px;
+    padding:20px;
+}
+.foot-desc {
+    text-align:center;
+    color:#777;
+    margin-top:30px;
+    font-size:13px;
+}
+</style>
+</head>
+<body>
 
+<div class="search-wrap">
+    <input type="text" id="kw" placeholder="输入资源名搜索">
+    <button id="searchBtn">搜索</button>
+</div>
+
+<div class="tip-text">结果列表</div>
+<div id="listBox">加载中，请稍候...</div>
+<div class="foot-desc">仅供学习检索</div>
+
+<script>
+const CSV_URL = "https://www.kdocs.cn/api/v3/sheets/download/cdBcUZWLpl13?type=csv";
+
+let dataList = [];
+
+Papa.parse(CSV_URL, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+        dataList = results.data.filter(item => item['名字']);
+        render(dataList);
+    },
+    error: function() {
+        document.getElementById("listBox").innerHTML = "表格加载失败，请检查文档权限是否公开";
+    }
+});
+
+function render(list){
+    const box = document.getElementById('listBox');
+    if(list.length === 0){
+        box.innerHTML = `
+        <div class="empty-box">
+            <p>没搜到结果，请检查关键词</p>
+        </div>
+        `;
+        return;
+    }
+    let html = '';
+    list.forEach(item=>{
+        let linkList = [];
+        let linkHtml = '';
+        const cols = ['百度','夸克','迅雷','移动','蓝奏云','UC'];
+        cols.forEach(name=>{
+            if(item[name] && item[name].trim()){
+                linkList.push(`${name}：${item[name].trim()}`);
+                linkHtml += `<div class="link-row">🔗 ${name}：<a href="${item[name].trim().split(' ')[0]}">${item[name].trim()}</a></div>`;
+            }
+        });
+
+        html += `
+        <div class="item-card">
+            <div class="item-title">${item['名字']}</div>
+            ${linkHtml}
+            <div class="btn-group">
+                <button class="btn-copy" data-link="${linkList.join('\n')}">复制所有链接</button>
+            </div>
+        </div>
+        `;
+    });
+    box.innerHTML = html;
+
+    document.querySelectorAll('.btn-copy').forEach(btn=>{
+        btn.onclick = function(){
+            let txt = this.getAttribute('data-link');
+            navigator.clipboard.writeText(txt).then(()=>{
+                alert('链接已复制成功！');
+            });
+        }
+    });
+}
+
+document.getElementById('searchBtn').onclick = function(){
+    let kw = document.getElementById('kw').value.trim();
+    if(!kw){
+        render(dataList);
+        return;
+    }
+    let res = dataList.filter(v=>v['名字'].includes(kw));
+    render(res);
+};
+
+document.getElementById('kw').onkeydown = function(e){
+    if(e.key === 'Enter') document.getElementById('searchBtn').click();
+};
+</script>
+
+</body>
+</html>
